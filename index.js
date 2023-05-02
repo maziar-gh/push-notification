@@ -9,14 +9,16 @@ var fs = require('fs');
 var http = require('http');
 var https = require('https');
 
+const MongoClient = require('mongodb').MongoClient;
+const url = 'mongodb://localhost:27017'; // Replace with your MongoDB connection URL
+const dbName = 'pushnotifications'; // Replace with your database name
+
 var pk  = fs.readFileSync(process.env.PRIVATE_KEY, 'utf8');
 var cr = fs.readFileSync(process.env.FULL_CHAIN, 'utf8');
 var credentials = {key: pk, cert: cr};
 
 const app = express();
-
 app.use(bodyParser.json());
-
 app.use(express.static(path.join(__dirname, 'client')));
 
 const publicVapidKey = process.env.PUBLIC_VAPID_KEY;
@@ -24,11 +26,31 @@ const privateVapidKey = process.env.PRIVATE_VAPID_KEY;
 
 webPush.setVapidDetails('mailto:test@example.com', publicVapidKey, privateVapidKey);
 
+
+const SubscriptionModel = require ('./subscriptionSchema');
+const mongoose = require ('mongoose');
+const DatabaseName = 'pushDb';
+const DatabaseURI = `mongodb://localhost:27017/${DatabaseName}`;
+
+
+mongoose
+  .connect (DatabaseURI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then (db => {
+    app.listen (port, () => console.log (`app running live on ${port}`));
+  })
+  .catch (err => console.log (err.message));
+
+  app.use (express.urlencoded ({extended: false}));
+
+
 // Subscribe route
+app.post('/subscribe', async (req, res, next) => {
+  const newSubscription = await SubscriptionModel.create ({...req.body});
 
-app.post('/subscribe', (req, res) => {
-  const subscription = req.body
-
+  const subscription = req.body;
   res.status(201).json({});
 
   // create payload
@@ -40,26 +62,25 @@ app.post('/subscribe', (req, res) => {
     .catch(error => console.error(error));
 });
 
+
+
+
 // (E) SEND TEST PUSH NOTIFICATION
 app.post("/mypush", (req, res) => {
   res.status(201).json({}); // reply with 201 (created)
-  webpush.sendNotification(req.body, JSON.stringify({
-    title: "Welcome!",
-    body: "Yes, it works!",
-    icon: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
-    image: "https://www.simplilearn.com/ice9/free_resources_article_thumb/what_is_image_Processing.jpg",
-    badge:"https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
-    actions: [
-        {
-          action: 'link',
-          type: 'button',
-          title: 'show',
-          icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
-        },
-      ],
-  }))
-  .catch(err => console.log(err));
+
+  const payload = JSON.stringify({
+    title: 'from insomenia !!!',
+  });
+
+  webPush.sendNotification(subscription, payload)
+    .catch(error => console.error(error));
 });
+
+
+
+
+
 
 
 
