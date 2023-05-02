@@ -13,7 +13,7 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
-const publicVapidKey = 'BGYPl_6qMbUtM10c_ivCUH_hpJCVVEeqTvoh5gftCcqlXVL0grRWlbXE91ikWeQLcZraGbPiRfgDeaRLPvv75Hs';
+const publicVapidKey = 'BD8MxjivtE1WADo6cg8UNkUegkXHaZAdny8j2Ys16YgXAsAuoYredTCldmdDq9hd7zwe7high0JXtmZFaJfVAgI';
 
 const triggerPush = document.querySelector('.trigger-push');
 
