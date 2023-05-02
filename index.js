@@ -43,7 +43,7 @@ app.post('/subscribe', (req, res) => {
 // (E) SEND TEST PUSH NOTIFICATION
 app.post("/mypush", (req, res) => {
   res.status(201).json({}); // reply with 201 (created)
-  webpush.sendNotification(req.body, JSON.stringify({
+  webPush.sendNotification(req.body, JSON.stringify({
     title: "Welcome!",
     body: "Yes, it works!",
     icon: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
