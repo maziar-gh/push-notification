@@ -26,6 +26,8 @@ const privateVapidKey = process.env.PRIVATE_VAPID_KEY;
 
 webPush.setVapidDetails('mailto:test@example.com', publicVapidKey, privateVapidKey);
 
+const list = [];
+
 
 // get client subscription config from db
 const subscription = {
@@ -72,33 +74,16 @@ const options = {
 };
 
 
-// Subscribe route
-app.post('/subscribe', (req, res, next) => {
+app.post('/subscribe', async (req, res) => {
+  const subscription = req.body
 
-  const subscription = req.body;
+  list.push(subscription);
 
-  // send notification
-  webPush.sendNotification(subscription, JSON.stringify(payload), options)
-    .then((_) => {
-        console.log('SENT!!!');
-        console.log(_);
-    })
-    .catch((_) => {
-        console.log(error => console.error(error));
-    });
+  res.status(201).json({});
 
-
-});
-
-
-
-
-// (E) SEND TEST PUSH NOTIFICATION
-app.post("/mypush", (req, res) => {
-  res.status(201).json({}); // reply with 201 (created)
-
+  // create payload
   const payload = JSON.stringify({
-    title: 'from insomenia !!!',
+    title: 'Push notifications with Service Workers',
   });
 
   webPush.sendNotification(subscription, payload)
@@ -108,6 +93,19 @@ app.post("/mypush", (req, res) => {
 
 
 
+// (E) SEND TEST PUSH NOTIFICATION
+app.post("/mypush", async (req, res) => {
+  res.status(201).json({}); // reply with 201 (created)
+
+  const subscription = list[list.length - 1];
+
+  const payload = JSON.stringify({
+    title: 'from insomenia !!!',
+  });
+
+  webPush.sendNotification(subscription, payload)
+    .catch(error => console.error(error));
+});
 
 
 
