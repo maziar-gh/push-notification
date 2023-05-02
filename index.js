@@ -9,9 +9,6 @@ var fs = require('fs');
 var http = require('http');
 var https = require('https');
 
-const MongoClient = require('mongodb').MongoClient;
-const url = 'mongodb://localhost:27017'; // Replace with your MongoDB connection URL
-const dbName = 'pushnotifications'; // Replace with your database name
 
 var pk  = fs.readFileSync(process.env.PRIVATE_KEY, 'utf8');
 var cr = fs.readFileSync(process.env.FULL_CHAIN, 'utf8');
