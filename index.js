@@ -27,39 +27,67 @@ const privateVapidKey = process.env.PRIVATE_VAPID_KEY;
 webPush.setVapidDetails('mailto:test@example.com', publicVapidKey, privateVapidKey);
 
 
-const SubscriptionModel = require ('./subscriptionSchema');
-const mongoose = require ('mongoose');
-const DatabaseName = 'pushDb';
-const DatabaseURI = `mongodb://localhost:27017/${DatabaseName}`;
+// get client subscription config from db
+const subscription = {
+  endpoint: '',
+  expirationTime: null,
+  keys: {
+      auth: '',
+      p256dh: '',
+  },
+};
 
+const payload = {
+  notification: {
+      title: 'Title',
+      body: 'This is my body',
+      icon: 'assets/icons/icon-384x384.png',
+      actions: [
+          { action: 'bar', title: 'Focus last' },
+          { action: 'baz', title: 'Navigate last' },
+      ],
+      data: {
+          onActionClick: {
+              default: { operation: 'openWindow' },
+              bar: {
+                  operation: 'focusLastFocusedOrOpen',
+                  url: '/signin',
+              },
+              baz: {
+                  operation: 'navigateLastFocusedOrOpen',
+                  url: '/signin',
+              },
+          },
+      },
+  },
+};
 
-mongoose
-  .connect (DatabaseURI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then (db => {
-    app.listen (port, () => console.log (`app running live on ${port}`));
-  })
-  .catch (err => console.log (err.message));
-
-  app.use (express.urlencoded ({extended: false}));
+const options = {
+  vapidDetails: {
+      subject: 'mailto:example_email@example.com',
+      publicKey: process.env.PRIVATE_KEY,
+      privateKey: process.env.FULL_CHAIN,
+  },
+  TTL: 60,
+};
 
 
 // Subscribe route
-app.post('/subscribe', async (req, res, next) => {
-  const newSubscription = await SubscriptionModel.create ({...req.body});
+app.post('/subscribe', (req, res, next) => {
 
   const subscription = req.body;
-  res.status(201).json({});
 
-  // create payload
-  const payload = JSON.stringify({
-    title: 'Push notifications with Service Workers',
-  });
+  // send notification
+  webPush.sendNotification(subscription, JSON.stringify(payload), options)
+    .then((_) => {
+        console.log('SENT!!!');
+        console.log(_);
+    })
+    .catch((_) => {
+        console.log(error => console.error(error));
+    });
 
-  webPush.sendNotification(subscription, payload)
-    .catch(error => console.error(error));
+
 });
 
 
