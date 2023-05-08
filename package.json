@@ -13,10 +13,9 @@
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.18.3",
+    "couchbase": "^4.2.2",
     "dotenv": "^6.2.0",
     "express": "^4.16.4",
-    "mongodb": "^5.3.0",
-    "mongoose": "^7.1.0",
     "web-push": "^3.3.3"
   }
 }

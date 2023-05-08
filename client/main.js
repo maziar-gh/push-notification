@@ -33,7 +33,7 @@ async function triggerPushNotification() {
     await fetch('/subscribe', {
       method: 'POST',
       body: JSON.stringify({
-        autentication_key: 'autentication_key',
+        auth_key: 'autentication_key',
         token: subscription
       }),
       headers: {

@@ -4,6 +4,8 @@ const express = require('express');
 const webPush = require('web-push');
 const bodyParser = require('body-parser');
 const path = require('path');
+const { error } = require('console');
+const couchbase = require('couchbase')
 
 var fs = require('fs');
 var http = require('http');
@@ -25,12 +27,9 @@ const privateVapidKey = process.env.PRIVATE_VAPID_KEY;
 
 webPush.setVapidDetails('mailto:test@example.com', publicVapidKey, privateVapidKey);
 
-const list = [];
 
-//init mongodb
-const mongoose = require('mongoose');
-const { error } = require('console');
-
+var bucket = null;
+var collection = null;
 
 // get client subscription config from db
 const subscription = {
@@ -50,7 +49,6 @@ const payload = {
       icon: 'assets/icons/icon-384x384.png',
       actions: [
           { action: 'bar', title: 'Focus last' },
-          { action: 'baz', title: 'Navigate last' },
       ],
       data: {
           onActionClick: {
@@ -59,23 +57,20 @@ const payload = {
                   operation: 'focusLastFocusedOrOpen',
                   url: '/signin',
               },
-              baz: {
-                  operation: 'navigateLastFocusedOrOpen',
-                  url: '/signin',
-              },
+             
           },
       },
   },
 };
 
-const options = {
-  vapidDetails: {
-      subject: 'mailto:example_email@example.com',
-      publicKey: process.env.PRIVATE_KEY,
-      privateKey: process.env.FULL_CHAIN,
-  },
-  TTL: 60,
-};
+// const options = {
+//   vapidDetails: {
+//       subject: 'mailto:example_email@example.com',
+//       publicKey: process.env.PRIVATE_KEY,
+//       privateKey: process.env.FULL_CHAIN,
+//   },
+//   TTL: 60,
+// };
 
 
 app.post('/subscribe', async (req, res) => {
@@ -85,34 +80,41 @@ app.post('/subscribe', async (req, res) => {
     message: 'you didn\'t pass valid parameters'
   };
 
-  const { autentication_key, token } = req.body;
-  if (!autentication_key || !token) {
+  const { auth_key, token } = req.body;
+  if (!auth_key || !token) {
     return res.json(response);
   }
 
-  const user = new User({ autentication_key, token });
+  const subscription = {
+    auth_key: auth_key,
+    token: {
+      endpoint: token.endpoint,
+      expirationTime: token.expirationTime,
+      keys: {
+          auth: token.keys.auth,
+          p256dh: token.keys.p256dh,
+      },
+    }
+  };
 
-  user.save((err) => {
-    if (err) {
-      response.message = 'couldn\'t save user, duplicate entry?';
-      return res.json(response);
+
+  await collection.upsert(auth_key, subscription,function(error, result){
+    if(error){
+      return res.status(400).send(error);
     }
 
-    response.status = 'success';
-    response.message = 'user successfully saved';
+    res.status(200).send(result);
 
-    res.json(response);
-
-    webPush.sendNotification(token, payload)
-    .catch(error => console.error(error));
+    //welcome message
+    // webPush.sendNotification(auth_key, payload)
+    // .catch(error => console.error(error));
   });
 
+  
+
   // const subscription = req.body
-
   // list.push(subscription);
-
   // res.status(201).json({});
-
   // create payload
   // const payload = JSON.stringify({
   //   title: 'Push notifications with Service Workers',
@@ -122,68 +124,97 @@ app.post('/subscribe', async (req, res) => {
 
 
 
-// (E) SEND TEST PUSH NOTIFICATION
-app.post("/mypush", async (req, res) => {
+// send push notification
+app.post("/push/:auth_key", async (req, res) => {
 
-  User.findOne({ autentication_key: req.params.autentication_key }, async (err, user) => {
-    // if (!Expo.isExpoPushToken(user.token)) {
-    //   return console.error(`Push token ${user.token} is not a valid Expo push token`);
-    // }
+  const response = {
+    status: 'failure',
+    message: 'you didn\'t pass valid parameters'
+  };
 
-    // const message = {
-    //   to: user.token,
-    //   sound: 'default',
-    //   title: req.body.title,
-    //   body: req.body.message,
-    // };
+  const { title, description, avatar, url } = req.body;
+  if (!title || !description || !avatar || !url) {
+    return res.json(response);
+  }
 
-    res.status(201).json({}); // reply with 201 (created)
+
+  const payload = {
+    notification: {
+        title: title,
+        body: description,
+        icon: avatar,
+        actions: [
+            { action: 'open', title: 'Show' },
+        ],
+        data: {
+            onActionClick: {
+                default: { operation: 'openWindow' },
+                open: {
+                    operation: 'focusLastFocusedOrOpen',
+                    url: url,
+                },
+               
+            },
+        },
+    },
+  };
+
+
+  collection.get(req.params.auth_key, function(error, result){
+    if(error){
+      return res.status(400).send(error);
+    }
+    res.status(200).json({ message: 'send push notification successfully!' });
+
 
     const payload = JSON.stringify({
       title: 'from insomenia !!!',
     });
-
+  
     webPush.sendNotification(user.token, payload)
       .catch(error => console.error(error));
 
   });
-  
-  
 });
 
 
 
+connectCouchbase()
+  .catch((err) => {
+    console.log('ERR:', err)
+    process.exit(1)
+  })
+  .then(() => {
 
-mongoose.connect(process.env.DB_LOCATION)
-.then(()=>{
-  console.log('connect to mongo!');
-
-
-
-  var httpServer = http.createServer(app);
-  httpServer.listen(process.env.PORT_HTTP || 8080, () => {
-    console.log("httpServer is runing at port 8080");
-  });
-  
-  if(process.env.CI_ENVIRONMENT != 'development'){
-    var httpsServer = https.createServer(credentials, app);
-    httpsServer.listen(process.env.PORT_HTTPS || 8443, () => {
-      console.log("httpsServer is runing at port 8443");
+    var httpServer = http.createServer(app);
+    httpServer.listen(process.env.PORT_HTTP || 8080, () => {
+      console.log("httpServer is runing at port 8080");
     });
-  }
-  
-}).catch((error)=>{
-  console.log(error);
-})
+
+    if(process.env.CI_ENVIRONMENT != 'development'){
+      var httpsServer = https.createServer(credentials, app);
+      httpsServer.listen(process.env.PORT_HTTPS || 8443, () => {
+        console.log("httpsServer is runing at port 8443");
+      });
+    }
+
+  })
 
 
 
 
-// app.set('port', process.env.PORT_HTTP || 5000);
-// const server = app.listen(app.get('port'), () => {
-//   console.log(`Express running → PORT ${server.address().port}`);
-// });
 
+async function connectCouchbase() {
+  var timeObject = new Date();
+  var seconds = timeObject.getSeconds() + 10;
 
-
-
+  const cluster = await couchbase.connect(process.env.COUCHBASE_SERVER, {
+    username: process.env.COUCHBASE_USERNAME,
+    password: process.env.COUCHBASE_PASSWORD,
+    ConnectTimeout: 95 * seconds,
+    QueryTimeout:   95 * seconds,
+    SearchTimeout:  95 * seconds,
+  });
+  bucket      = cluster.bucket(process.env.COUCHBASE_BUCKETNAME);
+  collection  = bucket.scope(process.env.COUCHBASE_SCOPE).collection(process.env.COUCHBASE_COLLECTION);
+}
