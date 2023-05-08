@@ -166,12 +166,8 @@ app.post("/push/:auth_key", async (req, res) => {
     }
     res.status(200).json({ message: 'send push notification successfully!' });
 
-
-    const payload = JSON.stringify({
-      title: 'from insomenia !!!',
-    });
   
-    webPush.sendNotification(user.token, payload)
+    webPush.sendNotification(result.token, payload)
       .catch(error => console.error(error));
 
   });
