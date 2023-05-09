@@ -1,0 +1,25 @@
+{
+    "name": "pwa-ios-test",
+    "short_name": "pwa-ios-test",
+    "description": "pwa-ios-test",
+    "display": "standalone",
+    "theme_color": "#ffffff",
+    "icons": [
+      {
+        "src": "pwa-192x192.png",
+        "sizes": "192x192",
+        "type": "image&#x2F;png"
+      },
+      {
+        "src": "pwa-512x512.png",
+        "sizes": "512x512",
+        "type": "image&#x2F;png"
+      },
+      {
+        "src": "pwa-512x512.png",
+        "sizes": "512x512",
+        "type": "image&#x2F;png",
+        "purpose": "any maskable"
+      }
+    ]
+  }
