@@ -42,8 +42,7 @@ const subscription = {
 };
 
 // sample payload to response
-const payload = {
-  notification: {
+const payload = JSON.stringify({
       title: '! subscribe success !',
       body: 'This is my body',
       icon: 'assets/icons/icon-384x384.png',
@@ -60,8 +59,7 @@ const payload = {
              
           },
       },
-  },
-};
+});
 
 // const options = {
 //   vapidDetails: {
@@ -87,14 +85,7 @@ app.post('/subscribe', async (req, res) => {
 
   const subscription = {
     auth_key: auth_key,
-    token: {
-      endpoint: token.endpoint,
-      expirationTime: token.expirationTime,
-      keys: {
-          auth: token.keys.auth,
-          p256dh: token.keys.p256dh,
-      },
-    }
+    token: token,
   };
 
 
@@ -106,8 +97,9 @@ app.post('/subscribe', async (req, res) => {
     res.status(200).send(result);
 
     //welcome message
-    // webPush.sendNotification(auth_key, payload)
-    // .catch(error => console.error(error));
+    //  webPush.sendNotification(token, payload)
+    //   .catch(error => console.error(error));
+    
   });
 
   
@@ -138,37 +130,49 @@ app.post("/push/:auth_key", async (req, res) => {
   }
 
 
-  const payload = {
-    notification: {
-        title: title,
-        body: description,
-        icon: avatar,
-        actions: [
-            { action: 'open', title: 'Show' },
-        ],
-        data: {
-            onActionClick: {
-                default: { operation: 'openWindow' },
-                open: {
-                    operation: 'focusLastFocusedOrOpen',
-                    url: url,
-                },
-               
-            },
-        },
-    },
-  };
+  const payload = JSON.stringify({
+
+      title: title,
+      body: description,
+      icon: avatar,
+      actions: [
+          { action: 'open', title: 'Show' },
+      ],
+      data: {
+          onActionClick: {
+              default: { operation: 'openWindow' },
+              open: {
+                  operation: 'focusLastFocusedOrOpen',
+                  url: url,
+              },
+          
+          },
+      },
+  
+  });
+
+
 
 
   collection.get(req.params.auth_key, function(error, result){
     if(error){
       return res.status(400).send(error);
     }
-    res.status(200).json({ message: 'send push notification successfully!' });
-
+    
+    const response = {
+      status: 'true',
+      message: 'send push notification successfully',
+      data: {
+        auth_key: req.params.auth_key
+      }
+    };
   
-    webPush.sendNotification(result.token, payload)
+    res.status(200).json(response)
+  
+    webPush.sendNotification(result.content.token, payload)
       .catch(error => console.error(error));
+
+      
 
   });
 });
