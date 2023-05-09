@@ -72,6 +72,26 @@ function notifyMe() {
   }    
 }
 
+var checkSafariPermission = function (permissionData)
+{
+    if (permissionData.permission === 'default')
+    {
+        window.safari.pushNotification.requestPermission(
+            'https://mywebsite.com',
+            'web.com.mywebsite',
+            {},
+            checkSafariPermission
+        );
+    } else if (permissionData.permission === 'denied')
+    {
+        console.log('denied');
+    } else if (permissionData.permission === 'granted')
+    {
+        // This is never triggered!
+        console.log('Device token: ' + permissionData.deviceToken);
+    }
+};
+
 
 const requestNotificationPermission = async () => {
   const permission = await window.Notification.requestPermission();
@@ -87,7 +107,10 @@ const requestNotificationPermission = async () => {
 
 const main = async () => {
   //const permission =  await requestNotificationPermission();
-  notifyMe();
+  //notifyMe();
+
+  var permissionData = window.safari.pushNotification.permission('web.com.mywebsite');
+  checkSafariPermission(permissionData);
 }
 
 main();
