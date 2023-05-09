@@ -1,16 +1,21 @@
+var data = null;
+
 self.addEventListener('push', event => {
-  const data = event.data.json();
+  data = event.data.json();
+
+  console.log(data);
 
   self.registration.showNotification(data.title, {
     body: data.description,
-    icon: data.avatar,
+    icon: data.icon,
+    image: data.image,
     actions: [
-        { action: 'open', title: 'Show' },
+        { action: 'open_url', title: 'مشاهده' },
     ],
     data: {
         onActionClick: {
             default: { operation: 'openWindow' },
-            open: {
+            open_url: {
                 operation: 'focusLastFocusedOrOpen',
                 url: data.url,
             },
@@ -18,4 +23,45 @@ self.addEventListener('push', event => {
         },
     },
   });
+});
+
+self.addEventListener('notificationclick', (event) => {
+  var url = data.url;
+
+
+  //Listen to custom action buttons in push notification
+  if (event.action === 'open_url') {
+    
+
+    event.waitUntil(
+      clients.openWindow(url)
+    );
+
+  }
+
+  event.notification.close(); //Close the notification
+
+  //To open the app after clicking notification
+  event.waitUntil(
+    clients.matchAll({
+      type: 'window'
+    })
+    .then((clients) => {
+      for (var i = 0; i < clients.length; i++) {
+        var client = clients[i];
+        //If site is opened, focus to the site
+        if (client.url === url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+
+      //If site is cannot be opened, open in new window
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
+    })
+    .catch((error) => {
+      console.error(error);
+    })
+  );
 });

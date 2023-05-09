@@ -99,7 +99,7 @@ app.post('/subscribe', async (req, res) => {
     //welcome message
     //  webPush.sendNotification(token, payload)
     //   .catch(error => console.error(error));
-    
+
   });
 
   
@@ -124,7 +124,7 @@ app.post("/push/:auth_key", async (req, res) => {
     message: 'you didn\'t pass valid parameters'
   };
 
-  const { title, description, avatar, url } = req.body;
+  const { title, description, avatar, url, icon } = req.body;
   if (!title || !description || !avatar || !url) {
     return res.json(response);
   }
@@ -134,7 +134,9 @@ app.post("/push/:auth_key", async (req, res) => {
 
       title: title,
       body: description,
-      icon: avatar,
+      icon: icon,
+      image: avatar,
+      url: url,
       actions: [
           { action: 'open', title: 'Show' },
       ],
