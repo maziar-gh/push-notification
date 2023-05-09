@@ -52,25 +52,24 @@ triggerPush.addEventListener('click', () => {
 
 
 function notifyMe() {
-  
-  Notification.requestPermission().then(function(result) {
-    if (result === 'denied') {
-      //alert('denied');
-      $(".au-notif-disabled-header").removeClass('hide');
-      $(".au-notif-disabled-header .btn").addClass('hide');
-      return;
-    }
-    if (result === 'default') {
-      //alert('ignored');
-      $(".au-notif-disabled-header").removeClass('hide');
-      return;
-    }
-    //alert('granted');
-    $(".au-notif-disabled-header").addClass('hide');
-  });
 
-  // At last, if the user has denied notifications, and you
-  // want to be respectful there is no need to bother them anymore.
+  console.log('notifyMe');
+  
+  try {
+    Notification.requestPermission()
+        .then(() => doSomething())                                                                                                                                               
+  } catch (error) {
+      // Safari doesn't return a promise for requestPermissions and it                                                                                                                                       
+      // throws a TypeError. It takes a callback as the first argument                                                                                                                                       
+      // instead.
+      if (error instanceof TypeError) {
+          Notification.requestPermission(() => {                                                                                                                                                             
+              doSomething();
+          });
+      } else {
+          throw error;                                                                                                                                                                                       
+      }                                                                                                                                                                                                      
+  }    
 }
 
 
