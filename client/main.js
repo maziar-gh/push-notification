@@ -52,24 +52,22 @@ triggerPush.addEventListener('click', () => {
 
 
 function notifyMe() {
-  if (!("Notification" in window)) {
-    // Check if the browser supports notifications
-    alert("This browser does not support desktop notification");
-  } else if (Notification.permission === "granted") {
-    // Check whether notification permissions have already been granted;
-    // if so, create a notification
-    const notification = new Notification("Hi there!");
-    // …
-  } else if (Notification.permission !== "denied") {
-    // We need to ask the user for permission
-    Notification.requestPermission().then((permission) => {
-      // If the user accepts, let's create a notification
-      if (permission === "granted") {
-        const notification = new Notification("Hi there!");
-        // …
-      }
-    });
-  }
+  
+  Notification.requestPermission().then(function(result) {
+    if (result === 'denied') {
+      //alert('denied');
+      $(".au-notif-disabled-header").removeClass('hide');
+      $(".au-notif-disabled-header .btn").addClass('hide');
+      return;
+    }
+    if (result === 'default') {
+      //alert('ignored');
+      $(".au-notif-disabled-header").removeClass('hide');
+      return;
+    }
+    //alert('granted');
+    $(".au-notif-disabled-header").addClass('hide');
+  });
 
   // At last, if the user has denied notifications, and you
   // want to be respectful there is no need to bother them anymore.
