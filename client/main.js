@@ -52,48 +52,42 @@ triggerPush.addEventListener('click', () => {
 
 
 function notifyMe() {
+  if (!("Notification" in window)) {
+    // Check if the browser supports notifications
+    alert("This browser does not support desktop notification");
+  } else if (Notification.permission === "granted") {
+    // Check whether notification permissions have already been granted;
+    // if so, create a notification
+    const notification = new Notification("Hi there!");
+    // …
+  } else if (Notification.permission !== "denied") {
+    // We need to ask the user for permission
+    Notification.requestPermission().then((permission) => {
+      // If the user accepts, let's create a notification
+      if (permission === "granted") {
+        const notification = new Notification("Hi there!");
+        // …
+      }
+    });
+  }
 
-  console.log('notifyMe');
-  
-  try {
-    Notification.requestPermission()
-        .then(() => doSomething())                                                                                                                                               
-  } catch (error) {
-      // Safari doesn't return a promise for requestPermissions and it                                                                                                                                       
-      // throws a TypeError. It takes a callback as the first argument                                                                                                                                       
-      // instead.
-      if (error instanceof TypeError) {
-          Notification.requestPermission(() => {                                                                                                                                                             
-              doSomething();
-          });
-      } else {
-          throw error;                                                                                                                                                                                       
-      }                                                                                                                                                                                                      
-  }    
+  // At last, if the user has denied notifications, and you
+  // want to be respectful there is no need to bother them anymore.
 }
-
-var checkSafariPermission = function (permissionData)
-{
-    if (permissionData.permission === 'default')
-    {
-        window.safari.pushNotification.requestPermission(
-            'https://mywebsite.com',
-            'web.com.mywebsite',
-            {},
-            checkSafariPermission
-        );
-    } else if (permissionData.permission === 'denied')
-    {
-        console.log('denied');
-    } else if (permissionData.permission === 'granted')
-    {
-        // This is never triggered!
-        console.log('Device token: ' + permissionData.deviceToken);
-    }
-};
 
 
 const requestNotificationPermission = async () => {
+
+  Notification.requestPermission(result => {
+    console.log(result)
+    if (result === 'granted') {
+      alert('Permissions granted')
+    }
+    else {
+      alert('Permissions denied')
+    }
+  });
+
   const permission = await window.Notification.requestPermission();
   // value of permission can be 'granted', 'default', 'denied'
   // granted: user has accepted the request
@@ -106,11 +100,7 @@ const requestNotificationPermission = async () => {
 }
 
 const main = async () => {
-  //const permission =  await requestNotificationPermission();
-  //notifyMe();
-
-  var permissionData = window.safari.pushNotification.permission('web.com.mywebsite');
-  checkSafariPermission(permissionData);
+  const permission =  await requestNotificationPermission();
 }
 
 main();
