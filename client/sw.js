@@ -3,12 +3,12 @@ var data = null;
 self.addEventListener('push', event => {
   data = event.data.json();
 
-  console.log(data);
-
   self.registration.showNotification(data.title, {
-    body: data.description,
+    body: data.body,
     icon: data.icon,
     image: data.image,
+    badge: data.badge,
+    dir: 'rtl',
     actions: [
         { action: 'open_url', title: 'مشاهده' },
     ],
@@ -31,8 +31,6 @@ self.addEventListener('notificationclick', (event) => {
 
   //Listen to custom action buttons in push notification
   if (event.action === 'open_url') {
-    
-
     event.waitUntil(
       clients.openWindow(url)
     );

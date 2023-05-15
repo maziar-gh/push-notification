@@ -101,16 +101,6 @@ app.post('/subscribe', async (req, res) => {
     //   .catch(error => console.error(error));
 
   });
-
-  
-
-  // const subscription = req.body
-  // list.push(subscription);
-  // res.status(201).json({});
-  // create payload
-  // const payload = JSON.stringify({
-  //   title: 'Push notifications with Service Workers',
-  // });
 });
 
 
@@ -124,8 +114,12 @@ app.post("/push/:auth_key", async (req, res) => {
     message: 'you didn\'t pass valid parameters'
   };
 
+  if (!req.params.auth_key) {
+    return res.json(response);
+  }
+
   const { title, description, avatar, url, icon } = req.body;
-  if (!title || !description || !avatar || !url) {
+  if (!title || !description || !avatar || !url || !icon) {
     return res.json(response);
   }
 
@@ -136,6 +130,7 @@ app.post("/push/:auth_key", async (req, res) => {
       body: description,
       icon: icon,
       image: avatar,
+      badge: icon,
       url: url,
       actions: [
           { action: 'open', title: 'Show' },
@@ -174,8 +169,6 @@ app.post("/push/:auth_key", async (req, res) => {
     webPush.sendNotification(result.content.token, payload)
       .catch(error => console.error(error));
 
-      
-
   });
 });
 
@@ -183,20 +176,20 @@ app.post("/push/:auth_key", async (req, res) => {
 
 connectCouchbase()
   .catch((err) => {
-    console.log('ERR:', err)
+    console.log('Couchbase ERR:', err)
     process.exit(1)
   })
   .then(() => {
 
-    var httpServer = http.createServer(app);
-    httpServer.listen(process.env.PORT_HTTP || 8080, () => {
-      console.log("httpServer is runing at port 8080");
-    });
-
-    if(process.env.CI_ENVIRONMENT != 'development'){
+    if(process.env.CI_ENVIRONMENT == 'production'){
       var httpsServer = https.createServer(credentials, app);
       httpsServer.listen(process.env.PORT_HTTPS || 8443, () => {
-        console.log("httpsServer is runing at port 8443");
+        console.log("httpsServer is runing at port 8443 (production)");
+      });
+    }else{
+      var httpServer = http.createServer(app);
+      httpServer.listen(process.env.PORT_HTTP || 8080, () => {
+        console.log("httpServer is runing at port 8080 (development)");
       });
     }
 

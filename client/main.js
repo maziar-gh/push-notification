@@ -81,11 +81,16 @@ const requestNotificationPermission = async () => {
   Notification.requestPermission(result => {
     console.log(result)
     if (result === 'granted') {
-      alert('Permissions granted')
+
+      setTimeout(()=> {
+        triggerPushNotification().catch(error => console.error(error));
+     }
+     ,2000);
+      
     }
-    else {
-      alert('Permissions denied')
-    }
+    // else {
+    //   alert('Permissions denied')
+    // }
   });
 
   const permission = await window.Notification.requestPermission();
@@ -96,7 +101,6 @@ const requestNotificationPermission = async () => {
   if(permission !== 'granted'){
       throw new Error('Permission not granted for Notification');
   }
-  triggerPushNotification().catch(error => console.error(error));
 }
 
 const main = async () => {
