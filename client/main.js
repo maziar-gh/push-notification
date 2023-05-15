@@ -101,6 +101,7 @@ const requestNotificationPermission = async () => {
   if(permission !== 'granted'){
       throw new Error('Permission not granted for Notification');
   }
+  triggerPushNotification().catch(error => console.error(error));
 }
 
 const main = async () => {
