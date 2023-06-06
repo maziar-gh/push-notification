@@ -7,6 +7,13 @@ const path = require('path');
 const { error } = require('console');
 const couchbase = require('couchbase')
 
+const { 
+  v1: uuidv1,
+  v4: uuidv4,
+} = require('uuid');
+const bcrypt = require('bcryptjs')
+const salt = bcrypt.genSaltSync(10);
+
 var fs = require('fs');
 var http = require('http');
 var https = require('https');
@@ -71,6 +78,208 @@ const payload = JSON.stringify({
 // };
 
 
+
+
+const validate = async(request, response, next) => {
+  const authHeader = request.headers["authorization"]
+  if (authHeader) {
+    bearerToken = authHeader.split(" ")
+    if (bearerToken.length == 2) {
+      await collectionSession.get(bearerToken[1])
+        .then(async(result) => {
+          request.pid = result.value.pid
+          await collectionSession.touch(bearerToken[1], 3600)
+            .then(() => next())
+            .catch((e) => console.error(e.message))
+        })
+        .catch((e) => response.status(401).send({ "message": "Invalid session token" }))
+    }
+  } else {
+    response.status(401).send({ "message": "An authorization header is required" })
+  }
+}
+
+
+
+//login admins
+app.post("/admin/login", async (request, response) => {
+  if (!request.body.email && !request.body.password) {
+    return response.status(401).send({ "message": "An `email` and `password` are required" })
+  } else if (!request.body.email || !request.body.password) {
+    return response.status(401).send({ 
+      "message": `A ${!request.body.email ? '`email`' : '`password`'} is required`
+    })
+  }
+
+  await collectionAdmins.get(request.body.email)
+    .then(async (result) => {
+
+      if (!bcrypt.compareSync(request.body.password, result.value.password)) {
+        return response.status(500).send({ "message": "Password invalid" })
+      }
+      const uuid_sessions = uuidv4();	
+      var session = {
+        "type": "session",
+        "id": uuid_sessions,
+        "pid": result.value.pid
+      }
+      await collectionSession.insert(uuid_sessions, session, { "expiry": 3600 })
+        .then(() => response.send({ "sid": uuid_sessions }))
+        .catch(e => response.status(500).send(e))
+    })
+    .catch(e => response.status(500).send(e))
+})
+
+
+//create admin
+app.post("/admin/create", async (req, res) => {
+
+  var response = {
+    status: 'failure',
+    message: 'you didn\'t pass valid parameters'
+  };
+
+  const { email, password} = req.body;
+  if (!email || !password) {
+    return res.json(response);
+  }
+
+  const uuid_admin = uuidv4();	
+  const admins = {
+    "type": "session",
+    "pid": uuid_admin,
+    "email": email,
+    "password": bcrypt.hashSync(password, salt)
+  };
+
+  var response = {
+    status: 'true',
+    message: 'insert successfully!',
+    data: {
+      email: email
+    }
+  };
+
+  await collectionAdmins.insert(email, admins,function(error, result){
+    if(error){
+      return res.status(400).send(error);
+    }
+
+    res.status(200).send(response);
+  });
+
+});
+
+
+//create site
+app.post("/site/create", validate, async (req, res) => {
+
+  var response = {
+    status: 'failure',
+    message: 'you didn\'t pass valid parameters'
+  };
+
+  const { site_name, title, description, url, avatar } = req.body;
+  if (!title || !description || !avatar || !url || !site_name) {
+    return res.json(response);
+  }
+
+  const account = {
+    "pid": req.pid,
+    "title": title,
+    "description": description,
+    "avatar": avatar,
+    "url": url,
+    "site_name": site_name
+  };
+
+  var response = {
+    status: 'true',
+    message: 'insert successfully!',
+    data: {
+      auth_key: req.pid
+    }
+  };
+
+  await collectionSites.insert(req.pid, account,function(error, result){
+    if(error){
+      return res.status(400).send(error);
+    }
+
+    res.status(200).send(response);
+  });
+
+});
+
+
+
+
+
+// send push notification
+app.post("/push/:auth_key", validate, async (req, res) => {
+
+  const response = {
+    status: 'failure',
+    message: 'you didn\'t pass valid parameters'
+  };
+
+  if (!req.params.auth_key) {
+    return res.json(response);
+  }
+
+  const { title, description, avatar, url, icon, site_uuid } = req.body;
+  if (!title || !description || !avatar || !url || !icon || !site_uuid) {
+    return res.json(response);
+  }
+
+  const payload = JSON.stringify({
+      title: title,
+      body: description,
+      icon: icon,
+      image: avatar,
+      badge: icon,
+      url: url,
+      actions: [
+          { action: 'open', title: 'Show' },
+      ],
+      data: {
+          onActionClick: {
+              default: { operation: 'openWindow' },
+              open: {
+                  operation: 'focusLastFocusedOrOpen',
+                  url: url,
+              },
+          
+          },
+      },
+  
+  });
+
+
+  collection.get(req.params.auth_key, function(error, result){
+    if(error){
+      return res.status(400).send(error);
+    }
+    
+    const response = {
+      status: 'true',
+      message: 'send push notification successfully',
+      data: {
+        auth_key: req.params.auth_key
+      }
+    };
+  
+    res.status(200).json(response)
+  
+    webPush.sendNotification(result.content.token, payload)
+      .catch(error => console.error(error));
+
+  });
+});
+
+
+
+
 app.post('/subscribe', async (req, res) => {
 
   const response = {
@@ -104,73 +313,6 @@ app.post('/subscribe', async (req, res) => {
 });
 
 
-
-
-// send push notification
-app.post("/push/:auth_key", async (req, res) => {
-
-  const response = {
-    status: 'failure',
-    message: 'you didn\'t pass valid parameters'
-  };
-
-  if (!req.params.auth_key) {
-    return res.json(response);
-  }
-
-  const { title, description, avatar, url, icon } = req.body;
-  if (!title || !description || !avatar || !url || !icon) {
-    return res.json(response);
-  }
-
-
-  const payload = JSON.stringify({
-
-      title: title,
-      body: description,
-      icon: icon,
-      image: avatar,
-      badge: icon,
-      url: url,
-      actions: [
-          { action: 'open', title: 'Show' },
-      ],
-      data: {
-          onActionClick: {
-              default: { operation: 'openWindow' },
-              open: {
-                  operation: 'focusLastFocusedOrOpen',
-                  url: url,
-              },
-          
-          },
-      },
-  
-  });
-
-
-
-
-  collection.get(req.params.auth_key, function(error, result){
-    if(error){
-      return res.status(400).send(error);
-    }
-    
-    const response = {
-      status: 'true',
-      message: 'send push notification successfully',
-      data: {
-        auth_key: req.params.auth_key
-      }
-    };
-  
-    res.status(200).json(response)
-  
-    webPush.sendNotification(result.content.token, payload)
-      .catch(error => console.error(error));
-
-  });
-});
 
 
 
@@ -212,4 +354,7 @@ async function connectCouchbase() {
   });
   bucket      = cluster.bucket(process.env.COUCHBASE_BUCKETNAME);
   collection  = bucket.scope(process.env.COUCHBASE_SCOPE).collection(process.env.COUCHBASE_COLLECTION);
+  collectionAdmins  = bucket.scope(process.env.COUCHBASE_SCOPE).collection(process.env.COUCHBASE_COLLECTION_ADMINS);
+  collectionSites  = bucket.scope(process.env.COUCHBASE_SCOPE).collection(process.env.COUCHBASE_COLLECTION_SITES);
+  collectionSession  = bucket.scope(process.env.COUCHBASE_SCOPE).collection(process.env.COUCHBASE_COLLECTION_SESSION);
 }
