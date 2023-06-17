@@ -30,9 +30,10 @@ async function triggerPushNotification() {
     });
     console.log('acceptance complete');
 
-    await fetch('/subscribe', {
+    await fetch('/api/subscribe', {
       method: 'POST',
       body: JSON.stringify({
+        site_token: 'site_token',
         auth_key: 'autentication_key',
         token: subscription
       }),

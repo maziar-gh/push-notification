@@ -4,15 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon index.js",
-    "serve": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "nodemon server.js",
+    "serve": "node server.js",
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "bearer-token": "^2.0.2",
     "body-parser": "^1.18.3",
     "couchbase": "^4.2.2",
     "dotenv": "^6.2.0",
