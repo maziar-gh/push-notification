@@ -213,9 +213,6 @@ router.post("/push/:auth_key", validate, async (req, res) => {
 
 // send push notification by single user
 router.post("/push_all_users", validate, async (req, res) => {
-  if (!req.params.auth_key) {
-    return res.status(400).send(fail_response('you didn\'t pass auth parameters'));
-  }
 
   const { site_token, title, description, avatar, url, icon } = req.body;
   if ( !site_token || !title || !description || !avatar || !url || !icon) {
