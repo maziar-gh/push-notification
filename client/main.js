@@ -33,8 +33,8 @@ async function triggerPushNotification() {
     await fetch('/api/subscribe', {
       method: 'POST',
       body: JSON.stringify({
-        site_token: 'site_token',
-        auth_key: 'autentication_key',
+        site_token: 'ec1d40f4-ad61-4d50-bd00-e9e8197960a7',
+        auth_key: make_uuid(32),
         token: subscription
       }),
       headers: {
@@ -107,6 +107,18 @@ const requestNotificationPermission = async () => {
 
 const main = async () => {
   const permission =  await requestNotificationPermission();
+}
+
+function make_uuid(length) {
+  let result = '';
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const charactersLength = characters.length;
+  let counter = 0;
+  while (counter < length) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    counter += 1;
+  }
+  return result;
 }
 
 main();
