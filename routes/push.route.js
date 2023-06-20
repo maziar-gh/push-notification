@@ -1,37 +1,33 @@
 const router = require('express').Router();
 const { uuidv4, bcrypt, salt, success_response, fail_response } = require('../others/function');
 const couchbase = require('couchbase');
+var N1qlQuery = couchbase.N1qlQuery;
 const webPush = require('web-push');
 
 const publicVapidKey = process.env.PUBLIC_VAPID_KEY;
 const privateVapidKey = process.env.PRIVATE_VAPID_KEY;
 webPush.setVapidDetails('mailto:test@example.com', publicVapidKey, privateVapidKey);
 
-
-async function connectCouchbase() {
-  var timeObject = new Date();
-  var seconds = timeObject.getSeconds() + 10;
-
-  const cluster = await couchbase.connect(process.env.COUCHBASE_SERVER, {
+var cluster_base = null;
+couchbase.connect(
+  process.env.COUCHBASE_SERVER,
+  {
     username: process.env.COUCHBASE_USERNAME,
     password: process.env.COUCHBASE_PASSWORD,
-    ConnectTimeout: 95 * seconds,
-    QueryTimeout:   95 * seconds,
-    SearchTimeout:  95 * seconds,
-  });
+  },
+  (err, cluster) => {
+    cluster_base = cluster;
+    bucket              = cluster.bucket(process.env.COUCHBASE_BUCKETNAME);
+    
 
-  bucket              = cluster.bucket(process.env.COUCHBASE_BUCKETNAME);
+    collection          = bucket.scope(process.env.COUCHBASE_SCOPE).collection(process.env.COUCHBASE_COLLECTION);
+    collectionAdmins    = bucket.scope(process.env.COUCHBASE_SCOPE).collection(process.env.COUCHBASE_COLLECTION_ADMINS);
+    collectionSites     = bucket.scope(process.env.COUCHBASE_SCOPE).collection(process.env.COUCHBASE_COLLECTION_SITES);
+    collectionSession   = bucket.scope(process.env.COUCHBASE_SCOPE).collection(process.env.COUCHBASE_COLLECTION_SESSION);
 
-  collection          = bucket.scope(process.env.COUCHBASE_SCOPE).collection(process.env.COUCHBASE_COLLECTION);
-  collectionAdmins    = bucket.scope(process.env.COUCHBASE_SCOPE).collection(process.env.COUCHBASE_COLLECTION_ADMINS);
-  collectionSites     = bucket.scope(process.env.COUCHBASE_SCOPE).collection(process.env.COUCHBASE_COLLECTION_SITES);
-  collectionSession   = bucket.scope(process.env.COUCHBASE_SCOPE).collection(process.env.COUCHBASE_COLLECTION_SESSION);
-
-  console.log('conncet to db');
-}
-
-connectCouchbase()
-
+    console.log('connected to db');
+  }
+)
 
 
 const validate = async(request, response, next) => {
@@ -162,8 +158,8 @@ router.post("/push/:auth_key", validate, async (req, res) => {
     return res.status(400).send(fail_response('you didn\'t pass auth parameters'));
   }
 
-  const { title, description, avatar, url, icon, site_uuid } = req.body;
-  if (!title || !description || !avatar || !url || !icon || !site_uuid) {
+  const { site_token, title, description, avatar, url, icon, site_uuid } = req.body;
+  if ( !site_token ||!title || !description || !avatar || !url || !icon || !site_uuid) {
     return res.status(400).send(fail_response('you didn\'t pass valid parameters'));
   }
 
@@ -191,29 +187,38 @@ router.post("/push/:auth_key", validate, async (req, res) => {
   });
 
 
-  collection.get(req.params.auth_key, function(error, result){
-    if(error){
-      res.status(404).send(fail_response('not found', error));
-    }
-    
-    res.status(200).json(success_response('send push notification successfully', { auth_key: req.params.auth_key }))
-  
-    webPush.sendNotification(result.content.token, payload)
-    .then()
-    .catch(error => console.error('webPush: ',error));
+  const querystr = "SELECT * FROM gshop2.notif.users WHERE site_token=$site_token AND auth_key=$auth_key"
+  const params = { parameters: { 'site_token': site_token, 'auth_key': req.params.auth_key }}
 
-  });
+  try {
+    let result = await cluster_base.query(querystr, params)
+
+    result.rows.forEach(element => {
+
+      webPush.sendNotification(element.users.token, payload)
+      .then()
+      .catch(error => console.error('webPush: ',error));
+
+    });
+    
+    return res.status(200).send(success_response('send push to user successfully'));
+
+  } catch (error) {
+    console.log('err: ', error);
+    return res.status(404).send(fail_response('not found', error));
+  }
+
 })
 
 
 // send push notification by single user
-router.post("/push_all_users/:auth_key", validate, async (req, res) => {
+router.post("/push_all_users", validate, async (req, res) => {
   if (!req.params.auth_key) {
     return res.status(400).send(fail_response('you didn\'t pass auth parameters'));
   }
 
-  const { site_token, title, description, avatar, url, icon, site_uuid } = req.body;
-  if ( !site_token || !title || !description || !avatar || !url || !icon || !site_uuid) {
+  const { site_token, title, description, avatar, url, icon } = req.body;
+  if ( !site_token || !title || !description || !avatar || !url || !icon) {
     return res.status(400).send(fail_response('you didn\'t pass valid parameters'));
   }
 
@@ -241,20 +246,29 @@ router.post("/push_all_users/:auth_key", validate, async (req, res) => {
   });
 
 
+  const querystr = "SELECT * FROM gshop2.notif.users WHERE site_token=$site_token"
+  const params = { parameters: { 'site_token': site_token }}
 
-  collection.get(eq.params.auth_key, function(error, result){
-    if(error){
-      res.status(404).send(fail_response('not found', error));
-    }
+  try {
+    let result = await cluster_base.query(querystr, params)
+
+    result.rows.forEach(element => {
+
+      webPush.sendNotification(element.users.token, payload)
+      .then()
+      .catch(error => console.error('webPush: ',error));
+
+    });
     
-    res.status(200).json(success_response('send push notification successfully', { auth_key: req.params.auth_key }))
-  
-    webPush.sendNotification(result.content.token, payload)
-    .then()
-    .catch(error => console.error('webPush: ',error));
+    return res.status(200).send(success_response('send all users successfully'));
 
-  });
-})
+  } catch (error) {
+    console.log('err: ', error);
+    return res.status(404).send(fail_response('not found', error));
+  }
+
+});
+
 
 
 const subscription = {
