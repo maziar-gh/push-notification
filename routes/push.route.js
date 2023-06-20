@@ -158,8 +158,8 @@ router.post("/push/:auth_key", validate, async (req, res) => {
     return res.status(400).send(fail_response('you didn\'t pass auth parameters'));
   }
 
-  const { site_token, title, description, avatar, url, icon, site_uuid } = req.body;
-  if ( !site_token ||!title || !description || !avatar || !url || !icon || !site_uuid) {
+  const { site_token, title, description, avatar, url, icon } = req.body;
+  if ( !site_token ||!title || !description || !avatar || !url || !icon ) {
     return res.status(400).send(fail_response('you didn\'t pass valid parameters'));
   }
 
