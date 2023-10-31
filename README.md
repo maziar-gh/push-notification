@@ -41,7 +41,3 @@ COUCHBASE_COLLECTION_SESSION='session'
 
 - [web-push](https://github.com/web-push-libs/web-push)
 
-## Licence
-
-[MIT](https://opensource.org/licenses/MIT)
-
